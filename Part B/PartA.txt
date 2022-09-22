@@ -1,0 +1,105 @@
+Total Number of flows = 3
+
+For srcPort = 43498, i.e Flow = 1
+Transaction 1
+Seq#: 705669103, Ack#: 1921750144, Window_Size = 49152
+Seq#: 1921750144, Ack#: 705669127, Window_Size = 49152
+
+Transaction 2
+Seq#: 705669127, Ack#: 1921750144, Window_Size = 49152
+Seq#: 1921750144, Ack#: 705670575, Window_Size = 49152
+
+For srcPort = 43500, i.e Flow = 2
+Transaction 1
+Seq#: 3636173852, Ack#: 2335809728, Window_Size = 49152
+Seq#: 2335809728, Ack#: 3636173876, Window_Size = 49152
+
+Transaction 2
+Seq#: 3636173876, Ack#: 2335809728, Window_Size = 49152
+Seq#: 2335809728, Ack#: 3636175324, Window_Size = 49152
+
+For srcPort = 43502, i.e Flow = 3
+Transaction 1
+Seq#: 2558634630, Ack#: 3429921723, Window_Size = 49152
+Seq#: 3429921723, Ack#: 2558634654, Window_Size = 49152
+
+Transaction 2
+Seq#: 2558634654, Ack#: 3429921723, Window_Size = 49152
+Seq#: 3429921723, Ack#: 2558636102, Window_Size = 49152
+
+******* RTT *********
+Flow 1: 0.073543 sec
+Flow 2: 0.167678 sec
+Flow 3: 0.073274 sec
+
+******* Loss Rate *********
+Flow 1: 0.000574
+Flow 2: 0.013624
+Flow 3: 0.001374
+
+******* Throughput *********
+Flow 1: 5251391 Bytes/sec
+Flow 2: 1285420 Bytes/sec
+Flow 3: 1481506 Bytes/sec
+
+************ Theoretical Throughput ************
+Flow 1: 1015170.374135 bytes/sec
+Flow 2: 91363.099110 bytes/sec
+Flow 3: 658435.617385 bytes/sec
+
+
+
+Explanations
+------------------------------------
+Part A.2 (a):
+    1. From the sequence and ack numbers for all the flows for the 2 transactions, it can be observed that the ack number sent by the receiver is
+       the seq number + the data sent by the sender i.e the next seq number expected by the receiver.
+    2. The receive window size received from the TCP header is 3 but we need to multiply it by the scaling factor of 16384 so that we get the actual
+       size which is 49152
+
+Part A.2 (b):
+    Throughput at the receiver: number of packets received per second
+    We calculate the throughput by diving the size of the packets sent by the sender to the receiver by the
+    difference of the timestamp of the first and last packet sent.
+
+Part A.2 (c):
+    The loss takes into account packets retransmitted due to triple duplicate and due to timeout.
+    We see that the loss rate follows the order flow2 > flow 1 > flow 3.
+
+    Since we have already computed the seq_numbers in separate dictionary for all the flows.
+    We check if any sequence number has been sent more than once, if yes, then that packet was retransmitted due to
+    either timeout or triple duplicate. Therefore, this way we get the total number packets not received and we already
+    have the total number of packets.
+
+    And since I observed that the flow 2 is the most lossy, we see that it has the highest loss rate as well which was expected.
+
+Part A.2 (d):
+    For RTT calculation, we don't consider packets which were retransmitted which is an important consideration for RTT as the
+    we don't know if the ack received by the sender is for the retransmitted packet or the original packet sent.
+    From the evaluation of the TCP headers, getting the TCP segment size is not straightforward, so we get the segment size
+    by removing the ethernet header and the tcp header from the total length of the packet.
+    Now, that we have the sequence numbers and the data length associated with it, we get the next expected ack numbers from the ack list of the receiver.
+    Therefore, we get the timestamps of the packets with the sequence number and ack number associated. No. of trips is incremented fro each seq-ack combination.
+    Therefore, we get RTT as the difference of the timestamps of the packets with the sequence number and ack number associated divided by the number of trips
+
+    We see a large difference in the throughput we got and the theoretical throughput calculated maybe because out of order packets may not be accounted for.
+    Also, there could be some anomaly in the calculation of RTT.
+
+
+
+ The PCAP received has a total of 3 flows with unique source port numbers 43498, 43500, 43502. Since, we weren't allowed to use existing APIs to parse the packets, we read the pcap file in the binary mode.
+ We get only ethernet packets in the pcap, so it is imperative that we remove the ethernet header and ip header to get the tcp related headers
+ With the knowledge of ethernet header, tcp header and IP header size we are able to get the src_port, src_ip, dest_port, dest_ip,
+ mss, payload_length, payload, etc. which are needed for determining which packet will belong to which flow.
+
+ We have sender = "130.245.145.12"; receiver = "128.208.2.198". Separate dictionaries for storing seq and ack numbers are used when required.
+
+ A class named packet_structure is created which has the info of all the data related to a packet. It also contains the getter method for fetching the values.
+ The flows are stored in a dictionary with the key as (src_port,src_ip,dest_port,dst_ip) and a list of packet_structure objects of each packet associated with it.
+
+
+
+
+
+
+
